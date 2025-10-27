@@ -1,26 +1,24 @@
 name: Manual Deploy to VPS
 
 on:
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout the repository
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          ref: main  # always deploy main branch
 
-      # 2️⃣ Test SSH Key (debug)
-      - name: Test SSH Key
+      - name: Debug SSH Key
         run: |
-          echo "Testing SSH connection..."
-          echo "${{ secrets.SSH_KEY }}" > /tmp/deploy_key
+          printf "%s\n" "${{ secrets.SSH_KEY }}" > /tmp/deploy_key
           chmod 600 /tmp/deploy_key
           ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo CONNECTED'
-      
-      # 3️⃣ Deploy to VPS
+
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v0.1.7
         with:
@@ -29,17 +27,12 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             set -e
-            echo "Starting deployment..."
             cd ${{ secrets.DEPLOY_PATH }}
             git fetch --all
             git reset --hard origin/main
-
-            # If Python app with virtual environment
             if [ -f venv/bin/activate ]; then
               source venv/bin/activate
               pip install -r requirements.txt
             fi
-
-            # Restart systemd service
             sudo systemctl restart ${{ secrets.SERVICE_NAME }}
             sudo systemctl status ${{ secrets.SERVICE_NAME }} --no-pager
