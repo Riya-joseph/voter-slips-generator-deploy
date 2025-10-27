@@ -1,0 +1,30 @@
+name: Manual Deploy to VPS
+
+on:
+  workflow_dispatch:   # <--- This enables manual trigger only
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.DEPLOY_PATH }}
+            git fetch --all
+            git reset --hard origin/main
+            if [ -f venv/bin/activate ]; then
+              source venv/bin/activate
+              pip install -r requirements.txt
+            fi
+            sudo systemctl restart ${{ secrets.SERVICE_NAME }}
+            sudo systemctl status ${{ secrets.SERVICE_NAME }} --no-pager
