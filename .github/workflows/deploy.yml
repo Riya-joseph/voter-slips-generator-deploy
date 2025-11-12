@@ -1,29 +1,26 @@
 name: Manual Deploy to VPS
 
 on:
-  workflow_dispatch:   # Manual trigger
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout main branch
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          ref: main   # Always deploy latest main branch
+          ref: main
 
-      # 2️⃣ Debug SSH connection
-      - name: Debug SSH Key
+      # 🧠 Fix: No base64 decode, just write key directly
+      - name: Debug SSH Connection
         run: |
           echo "Testing SSH connection..."
-          # Decode base64 key into temporary file
-          echo "${{ secrets.SSH_KEY }}" | base64 --decode > /tmp/deploy_key
+          echo "${{ secrets.SSH_KEY }}" > /tmp/deploy_key
           chmod 600 /tmp/deploy_key
           ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} 'echo CONNECTED'
 
-      # 3️⃣ Deploy code via SSH
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v0.1.7
         with:
@@ -35,17 +32,11 @@ jobs:
             set -e
             echo "Starting deployment..."
             cd ${{ secrets.DEPLOY_PATH }}
-
-            # Pull latest main branch
             git fetch --all
             git reset --hard origin/main
-
-            # If Python venv exists, install dependencies
             if [ -f venv/bin/activate ]; then
               source venv/bin/activate
               pip install -r requirements.txt
             fi
-
-            # Restart systemd service
             sudo systemctl restart ${{ secrets.SERVICE_NAME }}
             sudo systemctl status ${{ secrets.SERVICE_NAME }} --no-pager
