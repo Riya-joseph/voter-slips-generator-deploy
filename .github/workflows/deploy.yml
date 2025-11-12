@@ -6,6 +6,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
 
     steps:
       - name: Checkout Code
@@ -13,7 +16,6 @@ jobs:
         with:
           ref: main
 
-      # 🧠 Fix: No base64 decode, just write key directly
       - name: Debug SSH Connection
         run: |
           echo "Testing SSH connection..."
@@ -31,12 +33,12 @@ jobs:
           script: |
             set -e
             echo "Starting deployment..."
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd $DEPLOY_PATH
             git fetch --all
             git reset --hard origin/main
             if [ -f venv/bin/activate ]; then
               source venv/bin/activate
               pip install -r requirements.txt
             fi
-            sudo systemctl restart ${{ secrets.SERVICE_NAME }}
-            sudo systemctl status ${{ secrets.SERVICE_NAME }} --no-pager
+            sudo systemctl restart $SERVICE_NAME
+            sudo systemctl status $SERVICE_NAME --no-pager
